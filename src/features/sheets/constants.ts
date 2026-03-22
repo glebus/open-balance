@@ -9,7 +9,18 @@ export const SHEET_TABS = {
   },
   Transactions: {
     name: 'Transactions',
-    columns: ['Date', 'Type', 'Account', 'Ticker', 'Qty', 'Price', 'Currency', 'Total', 'Fee', 'Notes'],
+    columns: [
+      'Date',
+      'Type',
+      'Account',
+      'Ticker',
+      'Qty',
+      'Price',
+      'Currency',
+      'Total',
+      'Fee',
+      'Notes',
+    ],
   },
   Goals: {
     name: 'Goals',
@@ -17,7 +28,7 @@ export const SHEET_TABS = {
   },
   Prices: {
     name: 'Prices',
-    columns: ['Ticker', 'Price', 'Currency', 'Source'],
+    columns: ['Ticker', 'Price', 'Currency', 'Source', 'GoogleFinanceSymbol'],
   },
   Snapshots: {
     name: 'Snapshots',

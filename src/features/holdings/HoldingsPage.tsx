@@ -1,6 +1,20 @@
 import { useState, useMemo } from 'react'
-import { useSheetData, useAppendRow, useUpdateRow, useDeleteRow, useSheetId } from '@/features/sheets'
-import { formatNumber } from '@/lib/utils'
+import {
+  useSheetData,
+  useAppendRow,
+  useUpdateRow,
+  useDeleteRow,
+  useSheetId,
+} from '@/features/sheets'
+import { formatCurrency, formatNumber, toNumber } from '@/lib/utils'
+import {
+  buildPriceLookup,
+  convertAmount,
+  getBaseCurrency,
+  getFxTicker,
+  normalizeCurrency,
+  normalizeTicker,
+} from '@/lib/fx'
 import { Briefcase, Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
 import {
   Dialog,
@@ -36,6 +50,7 @@ const empty: HoldingForm = {
 export function HoldingsPage() {
   const { data: holdings, isLoading } = useSheetData('Holdings')
   const { data: prices } = useSheetData('Prices')
+  const { data: settings } = useSheetData('Settings')
   const appendRow = useAppendRow('Holdings')
   const updateRow = useUpdateRow('Holdings')
   const sheetId = useSheetId('Holdings')
@@ -46,16 +61,41 @@ export function HoldingsPage() {
   const [form, setForm] = useState<HoldingForm>(empty)
   const [saving, setSaving] = useState(false)
 
-  const rows = holdings || []
+  const rows = useMemo(() => holdings || [], [holdings])
+  const priceLookup = useMemo(() => buildPriceLookup(prices), [prices])
+  const baseCurrency = useMemo(() => getBaseCurrency(settings), [settings])
 
-  const priceMap = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const p of prices || []) {
-      const val = parseFloat(p.Price)
-      if (!isNaN(val)) map.set(p.Ticker.toUpperCase(), val)
+  const { totalHoldingsValue, missingFxPairs } = useMemo(() => {
+    const missing = new Set<string>()
+
+    const total = rows.reduce((sum, row) => {
+      const qty = toNumber(row.Qty)
+      const priceEntry = priceLookup.get(normalizeTicker(row.Ticker))
+      const unitPrice = priceEntry?.price ?? toNumber(row.AvgPrice)
+      const quoteCurrency = normalizeCurrency(priceEntry?.currency || row.Currency, baseCurrency)
+      const convertedValue = convertAmount(
+        qty * unitPrice,
+        quoteCurrency,
+        baseCurrency,
+        priceLookup,
+      )
+
+      if (convertedValue === undefined) {
+        const missingTicker = getFxTicker(quoteCurrency, baseCurrency)
+        if (missingTicker) {
+          missing.add(missingTicker)
+        }
+        return sum
+      }
+
+      return sum + convertedValue
+    }, 0)
+
+    return {
+      totalHoldingsValue: total,
+      missingFxPairs: [...missing],
     }
-    return map
-  }, [prices])
+  }, [baseCurrency, priceLookup, rows])
 
   const openAdd = () => {
     setForm(empty)
@@ -108,12 +148,24 @@ export function HoldingsPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Holdings</h2>
+        <div>
+          <h2 className="text-xl font-semibold">Holdings</h2>
+          <p className="text-sm text-muted-foreground">
+            Total market value: {formatCurrency(totalHoldingsValue, baseCurrency)}
+          </p>
+        </div>
         <Button onClick={openAdd}>
           <Plus size={16} />
           Add Holding
         </Button>
       </div>
+
+      {missingFxPairs.length > 0 && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+          Missing FX rates in Prices: {missingFxPairs.join(', ')}. Converted values stay hidden
+          until those pairs are available.
+        </div>
+      )}
 
       {rows.length === 0 ? (
         <div className="rounded-xl bg-card border border-border p-12 text-center shadow-sm">
@@ -125,39 +177,77 @@ export function HoldingsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Account</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Ticker</th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Qty</th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Avg Price</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Currency</th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Cost</th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Mkt Price</th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Mkt Value</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Category</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Notes</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Account
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Ticker
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Qty
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Avg Price
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Currency
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Cost ({baseCurrency})
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Mkt Price
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Mkt Value ({baseCurrency})
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Category
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Notes
+                </th>
                 <th className="px-4 py-3 w-20" />
               </tr>
             </thead>
             <tbody>
               {rows.map((row, i) => {
-                const qty = parseFloat(row.Qty) || 0
-                const avgPrice = parseFloat(row.AvgPrice) || 0
+                const qty = toNumber(row.Qty)
+                const avgPrice = toNumber(row.AvgPrice)
                 const cost = qty * avgPrice
-                const mktPrice = priceMap.get(row.Ticker.toUpperCase())
+                const holdingCurrency = normalizeCurrency(row.Currency, baseCurrency)
+                const costBase = convertAmount(cost, holdingCurrency, baseCurrency, priceLookup)
+                const priceEntry = priceLookup.get(normalizeTicker(row.Ticker))
+                const mktPrice = priceEntry?.price
+                const marketCurrency = normalizeCurrency(
+                  priceEntry?.currency || row.Currency,
+                  baseCurrency,
+                )
                 const mktValue = mktPrice !== undefined ? qty * mktPrice : undefined
+                const mktValueBase =
+                  mktValue !== undefined
+                    ? convertAmount(mktValue, marketCurrency, baseCurrency, priceLookup)
+                    : undefined
                 return (
-                  <tr key={i} className="border-b border-border/50 hover:bg-muted/50 transition-colors group">
+                  <tr
+                    key={i}
+                    className="border-b border-border/50 hover:bg-muted/50 transition-colors group"
+                  >
                     <td className="px-4 py-3">{row.Account}</td>
                     <td className="px-4 py-3 font-semibold">{row.Ticker}</td>
                     <td className="px-4 py-3 text-right">{formatNumber(qty, 4)}</td>
                     <td className="px-4 py-3 text-right">{formatNumber(avgPrice)}</td>
                     <td className="px-4 py-3">{row.Currency}</td>
-                    <td className="px-4 py-3 text-right">{formatNumber(cost)}</td>
+                    <td className="px-4 py-3 text-right">
+                      {costBase !== undefined ? formatCurrency(costBase, baseCurrency) : '—'}
+                    </td>
                     <td className="px-4 py-3 text-right text-muted-foreground">
                       {mktPrice !== undefined ? formatNumber(mktPrice) : '—'}
                     </td>
                     <td className="px-4 py-3 text-right font-medium">
-                      {mktValue !== undefined ? formatNumber(mktValue) : '—'}
+                      {mktValueBase !== undefined
+                        ? formatCurrency(mktValueBase, baseCurrency)
+                        : '—'}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{row.Category}</td>
                     <td className="px-4 py-3 text-muted-foreground">{row.Notes}</td>
@@ -188,11 +278,21 @@ export function HoldingsPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="h-account">Account</Label>
-                <Input id="h-account" value={form.Account} onChange={set('Account')} placeholder="e.g. IB" />
+                <Input
+                  id="h-account"
+                  value={form.Account}
+                  onChange={set('Account')}
+                  placeholder="e.g. IB"
+                />
               </div>
               <div>
                 <Label htmlFor="h-ticker">Ticker</Label>
-                <Input id="h-ticker" value={form.Ticker} onChange={set('Ticker')} placeholder="e.g. AAPL" />
+                <Input
+                  id="h-ticker"
+                  value={form.Ticker}
+                  onChange={set('Ticker')}
+                  placeholder="e.g. AAPL"
+                />
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
@@ -202,21 +302,42 @@ export function HoldingsPage() {
               </div>
               <div>
                 <Label htmlFor="h-price">Avg Price</Label>
-                <Input id="h-price" type="number" step="any" value={form.AvgPrice} onChange={set('AvgPrice')} />
+                <Input
+                  id="h-price"
+                  type="number"
+                  step="any"
+                  value={form.AvgPrice}
+                  onChange={set('AvgPrice')}
+                />
               </div>
               <div>
                 <Label htmlFor="h-currency">Currency</Label>
-                <Input id="h-currency" value={form.Currency} onChange={set('Currency')} placeholder="USD" />
+                <Input
+                  id="h-currency"
+                  value={form.Currency}
+                  onChange={set('Currency')}
+                  placeholder="USD"
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="h-category">Category</Label>
-                <Input id="h-category" value={form.Category} onChange={set('Category')} placeholder="Optional" />
+                <Input
+                  id="h-category"
+                  value={form.Category}
+                  onChange={set('Category')}
+                  placeholder="Optional"
+                />
               </div>
               <div>
                 <Label htmlFor="h-notes">Notes</Label>
-                <Input id="h-notes" value={form.Notes} onChange={set('Notes')} placeholder="Optional" />
+                <Input
+                  id="h-notes"
+                  value={form.Notes}
+                  onChange={set('Notes')}
+                  placeholder="Optional"
+                />
               </div>
             </div>
           </div>

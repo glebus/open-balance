@@ -1,7 +1,14 @@
 import { useMemo } from 'react'
 import { useSheetData } from '@/features/sheets'
 import { toNumber, formatCurrency } from '@/lib/utils'
-import { useStore } from '@/lib/store'
+import {
+  buildPriceLookup,
+  convertAmount,
+  getBaseCurrency,
+  getFxTicker,
+  normalizeCurrency,
+  normalizeTicker,
+} from '@/lib/fx'
 import { TrendingUp, Briefcase, Target, ArrowLeftRight, Landmark } from 'lucide-react'
 
 export function DashboardPage() {
@@ -11,35 +18,65 @@ export function DashboardPage() {
   const { data: goals } = useSheetData('Goals')
   const { data: transactions } = useSheetData('Transactions')
   const { data: settings } = useSheetData('Settings')
-  const getBaseCurrency = useStore((s) => s.getBaseCurrency)
-  const setSettings = useStore((s) => s.setSettings)
 
-  // Sync settings to store
-  if (settings) {
-    setSettings(settings.map((s) => ({ key: s.Key, value: s.Value })))
-  }
+  const priceLookup = useMemo(() => buildPriceLookup(prices), [prices])
+  const baseCurrency = useMemo(() => getBaseCurrency(settings), [settings])
 
-  const priceMap = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const p of prices || []) {
-      const val = parseFloat(p.Price)
-      if (!isNaN(val)) map.set(p.Ticker.toUpperCase(), val)
+  const { holdingsValue, cashValue, missingFxPairs } = useMemo(() => {
+    const missing = new Set<string>()
+
+    const convertedHoldingsValue = (holdings || []).reduce((sum, holding) => {
+      const qty = toNumber(holding.Qty)
+      const priceEntry = priceLookup.get(normalizeTicker(holding.Ticker))
+      const unitPrice = priceEntry?.price ?? toNumber(holding.AvgPrice)
+      const quoteCurrency = normalizeCurrency(
+        priceEntry?.currency || holding.Currency,
+        baseCurrency,
+      )
+      const convertedValue = convertAmount(
+        qty * unitPrice,
+        quoteCurrency,
+        baseCurrency,
+        priceLookup,
+      )
+
+      if (convertedValue === undefined) {
+        const missingTicker = getFxTicker(quoteCurrency, baseCurrency)
+        if (missingTicker) {
+          missing.add(missingTicker)
+        }
+        return sum
+      }
+
+      return sum + convertedValue
+    }, 0)
+
+    const convertedCashValue = (accounts || []).reduce((sum, account) => {
+      const accountCurrency = normalizeCurrency(account.Currency, baseCurrency)
+      const convertedValue = convertAmount(
+        toNumber(account.Balance),
+        accountCurrency,
+        baseCurrency,
+        priceLookup,
+      )
+
+      if (convertedValue === undefined) {
+        const missingTicker = getFxTicker(accountCurrency, baseCurrency)
+        if (missingTicker) {
+          missing.add(missingTicker)
+        }
+        return sum
+      }
+
+      return sum + convertedValue
+    }, 0)
+
+    return {
+      holdingsValue: convertedHoldingsValue,
+      cashValue: convertedCashValue,
+      missingFxPairs: [...missing],
     }
-    return map
-  }, [prices])
-
-  const baseCurrency = getBaseCurrency()
-  // Use market price when available, fall back to avg price (cost basis)
-  const holdingsValue = (holdings || []).reduce((sum, h) => {
-    const qty = toNumber(h.Qty)
-    const mktPrice = priceMap.get(h.Ticker.toUpperCase())
-    const price = mktPrice ?? toNumber(h.AvgPrice)
-    return sum + qty * price
-  }, 0)
-
-  const cashValue = (accounts || []).reduce((sum, a) => {
-    return sum + toNumber(a.Balance)
-  }, 0)
+  }, [accounts, baseCurrency, holdings, priceLookup])
 
   const totalValue = holdingsValue + cashValue
 
@@ -90,6 +127,13 @@ export function DashboardPage() {
           </div>
         ))}
       </div>
+
+      {missingFxPairs.length > 0 && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+          Missing FX rates in Prices: {missingFxPairs.join(', ')}. Totals exclude balances that
+          could not be converted to {baseCurrency}.
+        </div>
+      )}
 
       <div className="rounded-xl bg-card border border-border p-6 shadow-sm">
         <p className="text-sm text-muted-foreground">

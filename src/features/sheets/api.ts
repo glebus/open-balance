@@ -17,7 +17,7 @@ interface SpreadsheetResponse {
 }
 
 interface ValuesResponse {
-  values?: string[][]
+  values?: Array<Array<string | number | boolean | null>>
 }
 
 interface BatchUpdateResponse {
@@ -30,6 +30,14 @@ async function handleResponse<T>(res: Response): Promise<T> {
     throw new Error(err.error?.message || `API error: ${res.status}`)
   }
   return res.json()
+}
+
+function toCellString(value: string | number | boolean | null | undefined): string {
+  if (value === null || value === undefined) {
+    return ''
+  }
+
+  return String(value)
 }
 
 // --- Spreadsheet info ---
@@ -48,10 +56,9 @@ export async function getSpreadsheetInfo(
   token: string,
   spreadsheetId: string,
 ): Promise<SpreadsheetInfo> {
-  const res = await fetch(
-    `${BASE}/${spreadsheetId}?fields=properties.title,sheets.properties`,
-    { headers: headers(token) },
-  )
+  const res = await fetch(`${BASE}/${spreadsheetId}?fields=properties.title,sheets.properties`, {
+    headers: headers(token),
+  })
   const data = await handleResponse<SpreadsheetResponse>(res)
   return {
     title: data.properties.title,
@@ -69,18 +76,25 @@ export async function readSheet(
   spreadsheetId: string,
   sheetName: string,
 ): Promise<Record<string, string>[]> {
-  const res = await fetch(`${BASE}/${spreadsheetId}/values/${encodeURIComponent(sheetName)}?valueRenderOption=FORMATTED_VALUE`, {
-    headers: headers(token),
+  const params = new URLSearchParams({
+    valueRenderOption: 'UNFORMATTED_VALUE',
+    dateTimeRenderOption: 'FORMATTED_STRING',
   })
+  const res = await fetch(
+    `${BASE}/${spreadsheetId}/values/${encodeURIComponent(sheetName)}?${params.toString()}`,
+    {
+      headers: headers(token),
+    },
+  )
   const data = await handleResponse<ValuesResponse>(res)
-  const rows: string[][] = data.values || []
+  const rows = data.values || []
   if (rows.length < 2) return []
 
-  const hdrs = rows[0]
+  const hdrs = rows[0].map((value) => toCellString(value))
   return rows.slice(1).map((row) => {
     const obj: Record<string, string> = {}
     hdrs.forEach((h, i) => {
-      obj[h] = row[i] || ''
+      obj[h] = toCellString(row[i])
     })
     return obj
   })
@@ -199,7 +213,7 @@ export async function syncHeaders(
   const allRows = data.values || []
   if (allRows.length === 0) return
 
-  const currentHeaders = allRows[0]
+  const currentHeaders = allRows[0].map((value) => toCellString(value))
   const expectedSet = new Set(expectedColumns)
   const currentSet = new Set(currentHeaders)
 
@@ -212,7 +226,7 @@ export async function syncHeaders(
   const remapped: Record<string, string>[] = dataRows.map((row) => {
     const obj: Record<string, string> = {}
     currentHeaders.forEach((h, i) => {
-      if (expectedSet.has(h)) obj[h] = row[i] || ''
+      if (expectedSet.has(h)) obj[h] = toCellString(row[i])
     })
     return obj
   })
