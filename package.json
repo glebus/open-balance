@@ -1,26 +1,45 @@
 {
-  "name": "investments",
-  "version": "1.0.0",
-  "description": "",
+  "name": "open-balance",
+  "version": "0.1.0",
+  "description": "Open-source investment tracker powered by Google Sheets",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "eslint src/",
+    "format": "prettier --write src/"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
+  "keywords": ["investments", "portfolio", "google-sheets", "finance"],
+  "author": "glebus",
+  "license": "MIT",
   "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
     "@react-oauth/google": "^0.13.4",
+    "@tailwindcss/vite": "^4.2.2",
+    "@tanstack/react-query": "^5.94.5",
+    "lucide-react": "^0.577.0",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "react-hook-form": "^7.72.0",
+    "react-router-dom": "^7.13.1",
+    "recharts": "^3.8.0",
+    "tailwindcss": "^4.2.2",
+    "zod": "^4.3.6",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^17.4.0",
+    "prettier": "^3.8.1",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.57.1",
     "vite": "^8.0.1"
   }
 }
