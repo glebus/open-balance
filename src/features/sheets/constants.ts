@@ -1,7 +1,7 @@
 export const SHEET_TABS = {
   Accounts: {
     name: 'Accounts',
-    columns: ['Name', 'Type', 'Currency', 'Notes'],
+    columns: ['Name', 'Type', 'Currency', 'Balance', 'Notes'],
   },
   Holdings: {
     name: 'Holdings',

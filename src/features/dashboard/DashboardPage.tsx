@@ -2,11 +2,12 @@ import { useMemo } from 'react'
 import { useSheetData } from '@/features/sheets'
 import { toNumber, formatCurrency } from '@/lib/utils'
 import { useStore } from '@/lib/store'
-import { TrendingUp, Briefcase, Target, ArrowLeftRight } from 'lucide-react'
+import { TrendingUp, Briefcase, Target, ArrowLeftRight, Landmark } from 'lucide-react'
 
 export function DashboardPage() {
   const { data: holdings, isLoading: loadingH } = useSheetData('Holdings')
   const { data: prices } = useSheetData('Prices')
+  const { data: accounts } = useSheetData('Accounts')
   const { data: goals } = useSheetData('Goals')
   const { data: transactions } = useSheetData('Transactions')
   const { data: settings } = useSheetData('Settings')
@@ -29,12 +30,18 @@ export function DashboardPage() {
 
   const baseCurrency = getBaseCurrency()
   // Use market price when available, fall back to avg price (cost basis)
-  const totalValue = (holdings || []).reduce((sum, h) => {
+  const holdingsValue = (holdings || []).reduce((sum, h) => {
     const qty = toNumber(h.Qty)
     const mktPrice = priceMap.get(h.Ticker.toUpperCase())
     const price = mktPrice ?? toNumber(h.AvgPrice)
     return sum + qty * price
   }, 0)
+
+  const cashValue = (accounts || []).reduce((sum, a) => {
+    return sum + toNumber(a.Balance)
+  }, 0)
+
+  const totalValue = holdingsValue + cashValue
 
   const stats = [
     {
@@ -44,8 +51,13 @@ export function DashboardPage() {
     },
     {
       label: 'Holdings',
-      value: String((holdings || []).length),
+      value: formatCurrency(holdingsValue, baseCurrency),
       icon: Briefcase,
+    },
+    {
+      label: 'Cash',
+      value: formatCurrency(cashValue, baseCurrency),
+      icon: Landmark,
     },
     {
       label: 'Goals',
@@ -67,7 +79,7 @@ export function DashboardPage() {
     <div className="space-y-6">
       <h2 className="text-xl font-semibold">Dashboard</h2>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         {stats.map((stat) => (
           <div key={stat.label} className="rounded-xl bg-card border border-border p-5 shadow-sm">
             <div className="flex items-center gap-2 text-muted-foreground mb-2">

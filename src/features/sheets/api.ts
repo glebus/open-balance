@@ -69,7 +69,7 @@ export async function readSheet(
   spreadsheetId: string,
   sheetName: string,
 ): Promise<Record<string, string>[]> {
-  const res = await fetch(`${BASE}/${spreadsheetId}/values/${encodeURIComponent(sheetName)}`, {
+  const res = await fetch(`${BASE}/${spreadsheetId}/values/${encodeURIComponent(sheetName)}?valueRenderOption=FORMATTED_VALUE`, {
     headers: headers(token),
   })
   const data = await handleResponse<ValuesResponse>(res)

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useSheetData, useAppendRow, useUpdateRow, useDeleteRow, useSheetId } from '@/features/sheets'
+import { formatNumber } from '@/lib/utils'
 import { Landmark, Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
 import {
   Dialog,
@@ -18,13 +19,15 @@ interface AccountForm {
   Name: string
   Type: string
   Currency: string
+  Balance: string
   Notes: string
 }
 
 const empty: AccountForm = {
   Name: '',
   Type: 'Broker',
-  Currency: 'USD',
+  Currency: 'EUR',
+  Balance: '0',
   Notes: '',
 }
 
@@ -53,7 +56,8 @@ export function AccountsPage() {
     setForm({
       Name: row.Name || '',
       Type: row.Type || 'Broker',
-      Currency: row.Currency || 'USD',
+      Currency: row.Currency || 'EUR',
+      Balance: row.Balance || '0',
       Notes: row.Notes || '',
     })
     setEditIndex(i)
@@ -110,6 +114,7 @@ export function AccountsPage() {
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Name</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Type</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Currency</th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Cash Balance</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Notes</th>
                 <th className="px-4 py-3 w-20" />
               </tr>
@@ -120,6 +125,9 @@ export function AccountsPage() {
                   <td className="px-4 py-3 font-semibold">{row.Name}</td>
                   <td className="px-4 py-3">{row.Type}</td>
                   <td className="px-4 py-3">{row.Currency}</td>
+                  <td className="px-4 py-3 text-right font-medium">
+                    {formatNumber(parseFloat(row.Balance) || 0)}
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground">{row.Notes}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -164,8 +172,12 @@ export function AccountsPage() {
               </div>
               <div>
                 <Label htmlFor="a-currency">Currency</Label>
-                <Input id="a-currency" value={form.Currency} onChange={set('Currency')} placeholder="USD" />
+                <Input id="a-currency" value={form.Currency} onChange={set('Currency')} placeholder="EUR" />
               </div>
+            </div>
+            <div>
+              <Label htmlFor="a-balance">Cash Balance</Label>
+              <Input id="a-balance" type="number" step="any" value={form.Balance} onChange={set('Balance')} placeholder="0" />
             </div>
             <div>
               <Label htmlFor="a-notes">Notes</Label>

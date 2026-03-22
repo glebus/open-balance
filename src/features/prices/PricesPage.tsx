@@ -20,7 +20,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 function googleFinanceFormula(ticker: string): string {
-  return `=GOOGLEFINANCE("${ticker}","price")`
+  return `=GOOGLEFINANCE("${ticker}")`
 }
 
 interface PriceForm {
