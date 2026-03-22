@@ -9,4 +9,4 @@ export {
   createSheetTab,
   createSpreadsheet,
 } from './api'
-export { useSheetData, useAppendRow, useUpdateRow, useDeleteRow } from './hooks'
+export { useSheetData, useAppendRow, useUpdateRow, useDeleteRow, useSheetId } from './hooks'

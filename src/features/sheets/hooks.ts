@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useStore } from '@/lib/store'
-import { readSheet, appendRow, updateRow, deleteRow } from './api'
+import { readSheet, appendRow, updateRow, deleteRow, getSpreadsheetInfo } from './api'
 import { SHEET_TABS, type SheetTabName } from './constants'
 
 function useSheetContext() {
@@ -8,6 +8,20 @@ function useSheetContext() {
   const spreadsheetId = useStore((s) => s.spreadsheetId)
   if (!token || !spreadsheetId) throw new Error('Not connected')
   return { token, spreadsheetId }
+}
+
+export function useSpreadsheetInfo() {
+  const { token, spreadsheetId } = useSheetContext()
+  return useQuery({
+    queryKey: ['spreadsheet-info', spreadsheetId],
+    queryFn: () => getSpreadsheetInfo(token, spreadsheetId),
+    staleTime: 5 * 60_000,
+  })
+}
+
+export function useSheetId(tab: SheetTabName): number | undefined {
+  const { data } = useSpreadsheetInfo()
+  return data?.sheets.find((s) => s.title === SHEET_TABS[tab].name)?.sheetId
 }
 
 export function useSheetData(tab: SheetTabName) {

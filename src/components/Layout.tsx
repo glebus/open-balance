@@ -6,6 +6,7 @@ import {
   Briefcase,
   ArrowLeftRight,
   Target,
+  Landmark,
   Settings,
   Unlink,
 } from 'lucide-react'
@@ -16,6 +17,7 @@ const navItems = [
   { to: '/holdings', label: 'Holdings', icon: Briefcase },
   { to: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
   { to: '/goals', label: 'Goals', icon: Target },
+  { to: '/accounts', label: 'Accounts', icon: Landmark },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
