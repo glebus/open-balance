@@ -4,7 +4,11 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: '/open-balance/',
+  base: process.env.NODE_ENV === 'production' ? '/open-balance/' : '/',
+  server: {
+    strictPort: true,
+    port: 5173,
+  },
   resolve: {
     alias: {
       '@': '/src',
