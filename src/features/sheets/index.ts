@@ -7,5 +7,6 @@ export {
   deleteRow,
   writeSheet,
   createSheetTab,
+  createSpreadsheet,
 } from './api'
 export { useSheetData, useAppendRow, useUpdateRow, useDeleteRow } from './hooks'

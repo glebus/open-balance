@@ -49,6 +49,11 @@ src/
       hooks.ts                # TanStack Query hooks (useSheetData, useAppendRow, etc.)
       ConnectSheet.tsx         # Spreadsheet connection UI
       index.ts
+    onboarding/
+      LandingPage.tsx           # Marketing landing page (pre-auth)
+      ConnectSheetPage.tsx      # Spreadsheet connection flow (post-auth)
+      useGooglePicker.ts        # Google Picker API hook
+      index.ts
     dashboard/
       DashboardPage.tsx
     holdings/
@@ -120,8 +125,8 @@ npm run format     # Prettier
 ## Environment
 
 - `VITE_GOOGLE_CLIENT_ID` — Google OAuth 2.0 Client ID (set in `.env.local` locally, GitHub secret for deploy)
-- No other env vars needed
-- No backend, no API keys for data — everything uses the user's OAuth token
+- `VITE_GOOGLE_API_KEY` — Google API Key for Picker API (set in `.env.local` locally, GitHub secret for deploy). Restricted to Picker API + app domain. Optional — paste-URL fallback works without it
+- No backend — everything uses the user's OAuth token
 
 ## Deploy
 

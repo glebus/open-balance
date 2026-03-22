@@ -183,6 +183,38 @@ export async function writeSheet(
   await handleResponse(res)
 }
 
+// --- Create new spreadsheet ---
+
+interface CreateSpreadsheetResponse {
+  spreadsheetId: string
+  properties: { title: string }
+}
+
+export async function createSpreadsheet(
+  token: string,
+  title: string,
+  tabs: { name: string; columns: readonly string[] }[],
+): Promise<{ spreadsheetId: string; title: string }> {
+  const res = await fetch(BASE, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify({
+      properties: { title },
+      sheets: tabs.map((tab) => ({
+        properties: { title: tab.name },
+      })),
+    }),
+  })
+  const data = await handleResponse<CreateSpreadsheetResponse>(res)
+
+  // Write headers to each tab
+  for (const tab of tabs) {
+    await writeSheet(token, data.spreadsheetId, tab.name, [...tab.columns], [])
+  }
+
+  return { spreadsheetId: data.spreadsheetId, title: data.properties.title }
+}
+
 // --- Create sheet tab ---
 
 export async function createSheetTab(

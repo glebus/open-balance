@@ -1,7 +1,7 @@
 import { Routes, Route } from 'react-router-dom'
 import { useStore } from '@/lib/store'
-import { LoginButton } from '@/features/auth'
-import { ConnectSheet } from '@/features/sheets/ConnectSheet'
+import { LandingPage } from '@/features/onboarding/LandingPage'
+import { ConnectSheetPage } from '@/features/onboarding/ConnectSheetPage'
 import { Layout } from '@/components/Layout'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { HoldingsPage } from '@/features/holdings/HoldingsPage'
@@ -15,22 +15,12 @@ export default function App() {
 
   // Not logged in
   if (!accessToken) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold mb-2">OpenBalance</h1>
-          <p className="text-muted-foreground mb-6">
-            Track your investments with Google Sheets as your database.
-          </p>
-          <LoginButton />
-        </div>
-      </div>
-    )
+    return <LandingPage />
   }
 
   // Logged in but no spreadsheet connected
   if (!spreadsheetId) {
-    return <ConnectSheet />
+    return <ConnectSheetPage />
   }
 
   // Full app
