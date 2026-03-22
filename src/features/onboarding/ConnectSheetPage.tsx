@@ -5,6 +5,7 @@ import {
   createSpreadsheet,
   createSheetTab,
   writeSheet,
+  syncHeaders,
 } from '@/features/sheets/api'
 import { SHEET_TABS } from '@/features/sheets/constants'
 import { useGooglePicker } from './useGooglePicker'
@@ -38,12 +39,14 @@ export function ConnectSheetPage() {
       if (!accessToken) return
       const info = await getSpreadsheetInfo(accessToken, spreadsheetId)
 
-      // Ensure all required tabs exist
+      // Ensure all required tabs exist and headers are up to date
       const existingTabs = new Set(info.sheets.map((s) => s.title))
       for (const tab of Object.values(SHEET_TABS)) {
         if (!existingTabs.has(tab.name)) {
           await createSheetTab(accessToken, spreadsheetId, tab.name)
           await writeSheet(accessToken, spreadsheetId, tab.name, [...tab.columns], [])
+        } else {
+          await syncHeaders(accessToken, spreadsheetId, tab.name, [...tab.columns])
         }
       }
 

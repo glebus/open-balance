@@ -8,5 +8,6 @@ export {
   writeSheet,
   createSheetTab,
   createSpreadsheet,
+  syncHeaders,
 } from './api'
 export { useSheetData, useAppendRow, useUpdateRow, useDeleteRow, useSheetId } from './hooks'

@@ -183,6 +183,43 @@ export async function writeSheet(
   await handleResponse(res)
 }
 
+// --- Sync tab headers (migrate schema) ---
+
+export async function syncHeaders(
+  token: string,
+  spreadsheetId: string,
+  sheetName: string,
+  expectedColumns: string[],
+): Promise<void> {
+  const res = await fetch(
+    `${BASE}/${spreadsheetId}/values/${encodeURIComponent(sheetName)}?valueRenderOption=FORMATTED_VALUE`,
+    { headers: headers(token) },
+  )
+  const data = await handleResponse<ValuesResponse>(res)
+  const allRows = data.values || []
+  if (allRows.length === 0) return
+
+  const currentHeaders = allRows[0]
+  const expectedSet = new Set(expectedColumns)
+  const currentSet = new Set(currentHeaders)
+
+  // Check if all expected columns exist
+  const missing = expectedColumns.filter((c) => !currentSet.has(c))
+  if (missing.length === 0) return
+
+  // Remap existing data rows to the new column order
+  const dataRows = allRows.slice(1)
+  const remapped: Record<string, string>[] = dataRows.map((row) => {
+    const obj: Record<string, string> = {}
+    currentHeaders.forEach((h, i) => {
+      if (expectedSet.has(h)) obj[h] = row[i] || ''
+    })
+    return obj
+  })
+
+  await writeSheet(token, spreadsheetId, sheetName, expectedColumns, remapped)
+}
+
 // --- Create new spreadsheet ---
 
 interface CreateSpreadsheetResponse {
