@@ -8,6 +8,7 @@ import { HoldingsPage } from '@/features/holdings/HoldingsPage'
 import { TransactionsPage } from '@/features/transactions/TransactionsPage'
 import { GoalsPage } from '@/features/goals/GoalsPage'
 import { AccountsPage } from '@/features/accounts/AccountsPage'
+import { PricesPage } from '@/features/prices/PricesPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 
 export default function App() {
@@ -33,6 +34,7 @@ export default function App() {
         <Route path="transactions" element={<TransactionsPage />} />
         <Route path="goals" element={<GoalsPage />} />
         <Route path="accounts" element={<AccountsPage />} />
+        <Route path="prices" element={<PricesPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
     </Routes>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useSheetData, useAppendRow, useUpdateRow, useDeleteRow, useSheetId } from '@/features/sheets'
 import { formatNumber } from '@/lib/utils'
 import { Briefcase, Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
@@ -35,6 +35,7 @@ const empty: HoldingForm = {
 
 export function HoldingsPage() {
   const { data: holdings, isLoading } = useSheetData('Holdings')
+  const { data: prices } = useSheetData('Prices')
   const appendRow = useAppendRow('Holdings')
   const updateRow = useUpdateRow('Holdings')
   const sheetId = useSheetId('Holdings')
@@ -46,6 +47,15 @@ export function HoldingsPage() {
   const [saving, setSaving] = useState(false)
 
   const rows = holdings || []
+
+  const priceMap = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const p of prices || []) {
+      const val = parseFloat(p.Price)
+      if (!isNaN(val)) map.set(p.Ticker.toUpperCase(), val)
+    }
+    return map
+  }, [prices])
 
   const openAdd = () => {
     setForm(empty)
@@ -120,7 +130,9 @@ export function HoldingsPage() {
                 <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Qty</th>
                 <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Avg Price</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Currency</th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Value</th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Cost</th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Mkt Price</th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">Mkt Value</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Category</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Notes</th>
                 <th className="px-4 py-3 w-20" />
@@ -129,16 +141,24 @@ export function HoldingsPage() {
             <tbody>
               {rows.map((row, i) => {
                 const qty = parseFloat(row.Qty) || 0
-                const price = parseFloat(row.AvgPrice) || 0
-                const value = qty * price
+                const avgPrice = parseFloat(row.AvgPrice) || 0
+                const cost = qty * avgPrice
+                const mktPrice = priceMap.get(row.Ticker.toUpperCase())
+                const mktValue = mktPrice !== undefined ? qty * mktPrice : undefined
                 return (
                   <tr key={i} className="border-b border-border/50 hover:bg-muted/50 transition-colors group">
                     <td className="px-4 py-3">{row.Account}</td>
                     <td className="px-4 py-3 font-semibold">{row.Ticker}</td>
                     <td className="px-4 py-3 text-right">{formatNumber(qty, 4)}</td>
-                    <td className="px-4 py-3 text-right">{formatNumber(price)}</td>
+                    <td className="px-4 py-3 text-right">{formatNumber(avgPrice)}</td>
                     <td className="px-4 py-3">{row.Currency}</td>
-                    <td className="px-4 py-3 text-right font-medium">{formatNumber(value)}</td>
+                    <td className="px-4 py-3 text-right">{formatNumber(cost)}</td>
+                    <td className="px-4 py-3 text-right text-muted-foreground">
+                      {mktPrice !== undefined ? formatNumber(mktPrice) : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-right font-medium">
+                      {mktValue !== undefined ? formatNumber(mktValue) : '—'}
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground">{row.Category}</td>
                     <td className="px-4 py-3 text-muted-foreground">{row.Notes}</td>
                     <td className="px-4 py-3">

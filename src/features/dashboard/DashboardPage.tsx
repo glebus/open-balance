@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useSheetData } from '@/features/sheets'
 import { toNumber, formatCurrency } from '@/lib/utils'
 import { useStore } from '@/lib/store'
@@ -5,6 +6,7 @@ import { TrendingUp, Briefcase, Target, ArrowLeftRight } from 'lucide-react'
 
 export function DashboardPage() {
   const { data: holdings, isLoading: loadingH } = useSheetData('Holdings')
+  const { data: prices } = useSheetData('Prices')
   const { data: goals } = useSheetData('Goals')
   const { data: transactions } = useSheetData('Transactions')
   const { data: settings } = useSheetData('Settings')
@@ -16,9 +18,22 @@ export function DashboardPage() {
     setSettings(settings.map((s) => ({ key: s.Key, value: s.Value })))
   }
 
+  const priceMap = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const p of prices || []) {
+      const val = parseFloat(p.Price)
+      if (!isNaN(val)) map.set(p.Ticker.toUpperCase(), val)
+    }
+    return map
+  }, [prices])
+
   const baseCurrency = getBaseCurrency()
+  // Use market price when available, fall back to avg price (cost basis)
   const totalValue = (holdings || []).reduce((sum, h) => {
-    return sum + toNumber(h.Qty) * toNumber(h.AvgPrice)
+    const qty = toNumber(h.Qty)
+    const mktPrice = priceMap.get(h.Ticker.toUpperCase())
+    const price = mktPrice ?? toNumber(h.AvgPrice)
+    return sum + qty * price
   }, 0)
 
   const stats = [

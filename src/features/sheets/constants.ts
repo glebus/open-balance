@@ -15,6 +15,10 @@ export const SHEET_TABS = {
     name: 'Goals',
     columns: ['Name', 'Target', 'Currency', 'Deadline', 'Category', 'Notes'],
   },
+  Prices: {
+    name: 'Prices',
+    columns: ['Ticker', 'Price', 'Currency', 'Source'],
+  },
   Snapshots: {
     name: 'Snapshots',
     columns: ['Date', 'TotalValue', 'Currency', 'Notes'],
